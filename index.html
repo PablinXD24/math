@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recomendador de Filmes Híbridos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Recomendador de Filmes Híbridos</h1>
+    <p class="subtitle">Escolha dois filmes e descubra recomendações que combinam elementos de ambos</p>
+    
+    <div class="movie-selectors">
+        <div class="movie-selector">
+            <h2>Filme 1</h2>
+            <div class="search-container">
+                <input type="text" id="movie1-search" placeholder="Digite o nome de um filme...">
+                <div class="search-results" id="movie1-results"></div>
+            </div>
+            <div class="selected-movie" id="movie1-selected" style="display: none;">
+                <img id="movie1-poster" src="" alt="Poster">
+                <div>
+                    <div id="movie1-title"></div>
+                    <div id="movie1-year"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="movie-selector">
+            <h2>Filme 2</h2>
+            <div class="search-container">
+                <input type="text" id="movie2-search" placeholder="Digite o nome de um filme...">
+                <div class="search-results" id="movie2-results"></div>
+            </div>
+            <div class="selected-movie" id="movie2-selected" style="display: none;">
+                <img id="movie2-poster" src="" alt="Poster">
+                <div>
+                    <div id="movie2-title"></div>
+                    <div id="movie2-year"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button id="recommend-btn" disabled>Encontrar Recomendações</button>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Procurando recomendações...</p>
+    </div>
+    
+    <div class="recommendations" id="recommendations">
+        <h2>Recomendações baseadas nessa combinação</h2>
+        <div id="recommendations-list"></div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
