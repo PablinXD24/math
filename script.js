@@ -1,124 +1,120 @@
-// Configuração da API do TMDB
-// OBTENHA SUA PRÓPRIA CHAVE EM: https://www.themoviedb.org/settings/api
-const TMDB_API_KEY = 'babaa12ae3789f315a1195a801f3c847'; // Substitua por sua chave
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+document.addEventListener('DOMContentLoaded', () => {
+    // Configuração da API
+    const TMDB_API_KEY = 'babaa12ae3789f315a1195a801f3c847';
+    const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+    const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/185x278?text=No+poster';
 
-// Elementos do DOM
-const movie1Search = document.getElementById('movie1-search');
-const movie1Results = document.getElementById('movie1-results');
-const movie1Selected = document.getElementById('movie1-selected');
-const movie1Poster = document.getElementById('movie1-poster');
-const movie1Title = document.getElementById('movie1-title');
-const movie1Year = document.getElementById('movie1-year');
+    // Elementos DOM
+    const elements = {
+        movie1: {
+            search: document.getElementById('movie1-search'),
+            results: document.getElementById('movie1-results'),
+            selected: document.getElementById('movie1-selected'),
+            poster: document.getElementById('movie1-poster'),
+            title: document.getElementById('movie1-title'),
+            year: document.getElementById('movie1-year')
+        },
+        movie2: {
+            search: document.getElementById('movie2-search'),
+            results: document.getElementById('movie2-results'),
+            selected: document.getElementById('movie2-selected'),
+            poster: document.getElementById('movie2-poster'),
+            title: document.getElementById('movie2-title'),
+            year: document.getElementById('movie2-year')
+        },
+        recommendBtn: document.getElementById('recommend-btn'),
+        recommendations: {
+            container: document.getElementById('recommendations'),
+            list: document.getElementById('recommendations-list')
+        },
+        buttonText: document.querySelector('.button-text'),
+        buttonLoader: document.querySelector('.button-loader')
+    };
 
-const movie2Search = document.getElementById('movie2-search');
-const movie2Results = document.getElementById('movie2-results');
-const movie2Selected = document.getElementById('movie2-selected');
-const movie2Poster = document.getElementById('movie2-poster');
-const movie2Title = document.getElementById('movie2-title');
-const movie2Year = document.getElementById('movie2-year');
+    // Estado da aplicação
+    const state = {
+        selectedMovie1: null,
+        selectedMovie2: null,
+        searchTimeout: null
+    };
 
-const recommendBtn = document.getElementById('recommend-btn');
-const loadingDiv = document.getElementById('loading');
-const recommendationsDiv = document.getElementById('recommendations');
-const recommendationsList = document.getElementById('recommendations-list');
+    // Inicialização
+    init();
 
-// Filmes selecionados
-let selectedMovie1 = null;
-let selectedMovie2 = null;
-
-// Configurar listeners de busca
-setupSearch(movie1Search, movie1Results, (movie) => {
-    selectedMovie1 = movie;
-    displaySelectedMovie(movie, movie1Selected, movie1Poster, movie1Title, movie1Year);
-    checkRecommendButton();
-});
-
-setupSearch(movie2Search, movie2Results, (movie) => {
-    selectedMovie2 = movie;
-    displaySelectedMovie(movie, movie2Selected, movie2Poster, movie2Title, movie2Year);
-    checkRecommendButton();
-});
-
-// Configurar botão de recomendação
-recommendBtn.addEventListener('click', async () => {
-    if (!selectedMovie1 || !selectedMovie2) return;
-    
-    // Mostrar loading
-    loadingDiv.style.display = 'block';
-    recommendationsDiv.style.display = 'none';
-    
-    try {
-        // Obter recomendações híbridas
-        const recommendations = await getHybridRecommendations(selectedMovie1, selectedMovie2);
-        displayRecommendations(recommendations);
-    } catch (error) {
-        console.error('Erro ao obter recomendações:', error);
-        recommendationsList.innerHTML = '<p>Ocorreu um erro ao buscar recomendações. Por favor, tente novamente.</p>';
-    } finally {
-        loadingDiv.style.display = 'none';
-        recommendationsDiv.style.display = 'block';
+    function init() {
+        setupSearch('movie1');
+        setupSearch('movie2');
+        setupRecommendButton();
     }
-});
 
-// Função para configurar a busca de filmes
-function setupSearch(inputElement, resultsContainer, onSelect) {
-    let timeoutId;
-    
-    inputElement.addEventListener('input', () => {
-        clearTimeout(timeoutId);
-        const query = inputElement.value.trim();
+    function setupSearch(movieNum) {
+        const { search, results } = elements[movieNum];
+
+        search.addEventListener('input', () => handleSearchInput(movieNum));
+        
+        document.addEventListener('click', (e) => {
+            if (!results.contains(e.target) && e.target !== search) {
+                results.style.display = 'none';
+            }
+        });
+    }
+
+    async function handleSearchInput(movieNum) {
+        clearTimeout(state.searchTimeout);
+        
+        const { search, results } = elements[movieNum];
+        const query = search.value.trim();
         
         if (query.length < 2) {
-            resultsContainer.style.display = 'none';
+            results.style.display = 'none';
             return;
         }
         
-        timeoutId = setTimeout(async () => {
+        state.searchTimeout = setTimeout(async () => {
             try {
                 const movies = await searchMovies(query);
-                displaySearchResults(movies, resultsContainer, onSelect);
+                displaySearchResults(movieNum, movies);
             } catch (error) {
                 console.error('Erro na busca:', error);
-                resultsContainer.innerHTML = '<div class="movie-result">Erro ao buscar filmes</div>';
-                resultsContainer.style.display = 'block';
+                showSearchError(movieNum);
             }
         }, 500);
-    });
-    
-    // Esconder resultados quando clicar fora
-    document.addEventListener('click', (e) => {
-        if (!resultsContainer.contains(e.target) && e.target !== inputElement) {
-            resultsContainer.style.display = 'none';
-        }
-    });
-}
-
-// Buscar filmes na API do TMDB
-async function searchMovies(query) {
-    const response = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=pt-BR`);
-    const data = await response.json();
-    return data.results;
-}
-
-// Exibir resultados da busca
-function displaySearchResults(movies, container, onSelect) {
-    container.innerHTML = '';
-    
-    if (movies.length === 0) {
-        container.innerHTML = '<div class="movie-result">Nenhum filme encontrado</div>';
-        container.style.display = 'block';
-        return;
     }
-    
-    movies.slice(0, 5).forEach(movie => {
-        const movieElement = document.createElement('div');
-        movieElement.className = 'movie-result';
+
+    async function searchMovies(query) {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=pt-BR`
+        );
+        const data = await response.json();
+        return data.results;
+    }
+
+    function displaySearchResults(movieNum, movies) {
+        const { results } = elements[movieNum];
+        results.innerHTML = '';
         
+        if (!movies || movies.length === 0) {
+            results.innerHTML = '<div class="movie-result">Nenhum filme encontrado</div>';
+            results.style.display = 'block';
+            return;
+        }
+        
+        movies.slice(0, 5).forEach(movie => {
+            const movieElement = createMovieResultElement(movie, movieNum);
+            results.appendChild(movieElement);
+        });
+        
+        results.style.display = 'block';
+    }
+
+    function createMovieResultElement(movie, movieNum) {
+        const { search, results } = elements[movieNum];
         const posterPath = movie.poster_path 
             ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
-            : 'https://via.placeholder.com/40x60?text=No+poster';
+            : 'https://via.placeholder.com/45x67?text=No+poster';
         
+        const movieElement = document.createElement('div');
+        movieElement.className = 'movie-result';
         movieElement.innerHTML = `
             <img src="${posterPath}" alt="${movie.title}">
             <div>
@@ -128,100 +124,148 @@ function displaySearchResults(movies, container, onSelect) {
         `;
         
         movieElement.addEventListener('click', () => {
-            onSelect({
+            selectMovie(movieNum, {
                 id: movie.id,
                 title: movie.title,
                 year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
                 poster: movie.poster_path 
                     ? `https://image.tmdb.org/t/p/w185${movie.poster_path}`
-                    : 'https://via.placeholder.com/185x278?text=No+poster',
+                    : PLACEHOLDER_IMAGE,
                 genres: movie.genre_ids || []
             });
             
-            container.style.display = 'none';
-            container.previousElementSibling.value = movie.title;
+            results.style.display = 'none';
+            search.value = movie.title;
         });
         
-        container.appendChild(movieElement);
-    });
-    
-    container.style.display = 'block';
-}
-
-// Exibir filme selecionado
-function displaySelectedMovie(movie, container, posterElement, titleElement, yearElement) {
-    posterElement.src = movie.poster;
-    titleElement.textContent = movie.title;
-    yearElement.textContent = movie.year;
-    container.style.display = 'flex';
-}
-
-// Verificar se o botão de recomendação deve ser ativado
-function checkRecommendButton() {
-    recommendBtn.disabled = !(selectedMovie1 && selectedMovie2);
-}
-
-// Obter recomendações híbridas (simulação - na prática seria uma combinação de gêneros/palavras-chave)
-async function getHybridRecommendations(movie1, movie2) {
-    // Primeiro, obtemos detalhes dos filmes selecionados para pegar gêneros
-    const [movie1Details, movie2Details] = await Promise.all([
-        getMovieDetails(movie1.id),
-        getMovieDetails(movie2.id)
-    ]);
-    
-    // Combinamos os gêneros dos dois filmes
-    const combinedGenres = [...new Set([
-        ...(movie1Details.genres.map(g => g.id)),
-        ...(movie2Details.genres.map(g => g.id))
-    ])];
-    
-    // Buscamos filmes que compartilham esses gêneros
-    const recommendations = await discoverMovies({
-        with_genres: combinedGenres.join(','),
-        sort_by: 'popularity.desc',
-        language: 'pt-BR'
-    });
-    
-    // Removemos os filmes originais das recomendações
-    return recommendations.results.filter(movie => 
-        movie.id !== movie1.id && movie.id !== movie2.id
-    ).slice(0, 5); // Limitamos a 5 recomendações
-}
-
-// Obter detalhes de um filme
-async function getMovieDetails(movieId) {
-    const response = await fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=pt-BR`);
-    return await response.json();
-}
-
-// Descobrir filmes com critérios específicos
-async function discoverMovies(params) {
-    const queryString = Object.entries(params)
-        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-        .join('&');
-    
-    const response = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&${queryString}`);
-    return await response.json();
-}
-
-// Exibir recomendações
-function displayRecommendations(recommendations) {
-    recommendationsList.innerHTML = '';
-    
-    if (recommendations.length === 0) {
-        recommendationsList.innerHTML = '<p>Não encontramos recomendações para essa combinação. Tente outros filmes!</p>';
-        return;
+        return movieElement;
     }
-    
-    recommendations.forEach(movie => {
+
+    function showSearchError(movieNum) {
+        const { results } = elements[movieNum];
+        results.innerHTML = '<div class="movie-result error-message">Erro ao buscar filmes</div>';
+        results.style.display = 'block';
+    }
+
+    function selectMovie(movieNum, movie) {
+        state[`selectedMovie${movieNum.slice(-1)}`] = movie;
+        displaySelectedMovie(movieNum);
+        checkRecommendButton();
+    }
+
+    function displaySelectedMovie(movieNum) {
+        const { selected, poster, title, year } = elements[movieNum];
+        const movie = state[`selectedMovie${movieNum.slice(-1)}`];
+        
+        poster.src = movie.poster;
+        poster.alt = `Poster de ${movie.title}`;
+        title.textContent = movie.title;
+        year.textContent = movie.year;
+        selected.style.display = 'flex';
+    }
+
+    function setupRecommendButton() {
+        elements.recommendBtn.addEventListener('click', handleRecommendation);
+    }
+
+    async function handleRecommendation() {
+        if (!state.selectedMovie1 || !state.selectedMovie2) return;
+        
+        showLoading(true);
+        elements.recommendations.container.style.display = 'none';
+        
+        try {
+            const recommendations = await getHybridRecommendations();
+            displayRecommendations(recommendations);
+        } catch (error) {
+            console.error('Erro ao obter recomendações:', error);
+            showRecommendationError();
+        } finally {
+            showLoading(false);
+            elements.recommendations.container.style.display = 'block';
+        }
+    }
+
+    function showLoading(show) {
+        if (show) {
+            elements.buttonText.style.visibility = 'hidden';
+            elements.buttonLoader.style.display = 'block';
+            elements.recommendBtn.disabled = true;
+        } else {
+            elements.buttonText.style.visibility = 'visible';
+            elements.buttonLoader.style.display = 'none';
+            checkRecommendButton();
+        }
+    }
+
+    async function getHybridRecommendations() {
+        const [movie1Details, movie2Details] = await Promise.all([
+            getMovieDetails(state.selectedMovie1.id),
+            getMovieDetails(state.selectedMovie2.id)
+        ]);
+        
+        const combinedGenres = [
+            ...new Set([
+                ...movie1Details.genres.map(g => g.id),
+                ...movie2Details.genres.map(g => g.id)
+            ])
+        ];
+        
+        const recommendations = await discoverMovies({
+            with_genres: combinedGenres.join(','),
+            sort_by: 'popularity.desc',
+            language: 'pt-BR'
+        });
+        
+        return recommendations.results.filter(movie => 
+            movie.id !== state.selectedMovie1.id && 
+            movie.id !== state.selectedMovie2.id
+        ).slice(0, 5);
+    }
+
+    async function getMovieDetails(movieId) {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=pt-BR`
+        );
+        return await response.json();
+    }
+
+    async function discoverMovies(params) {
+        const queryString = Object.entries(params)
+            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+            .join('&');
+        
+        const response = await fetch(
+            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&${queryString}`
+        );
+        return await response.json();
+    }
+
+    function displayRecommendations(recommendations) {
+        elements.recommendations.list.innerHTML = '';
+        
+        if (!recommendations || recommendations.length === 0) {
+            elements.recommendations.list.innerHTML = 
+                '<p class="no-results">Não encontramos recomendações para essa combinação. Tente outros filmes!</p>';
+            return;
+        }
+        
+        recommendations.forEach(movie => {
+            const recommendationElement = createRecommendationElement(movie);
+            elements.recommendations.list.appendChild(recommendationElement);
+        });
+        
+        triggerConfetti();
+    }
+
+    function createRecommendationElement(movie) {
         const posterPath = movie.poster_path 
             ? `https://image.tmdb.org/t/p/w185${movie.poster_path}`
-            : 'https://via.placeholder.com/185x278?text=No+poster';
+            : PLACEHOLDER_IMAGE;
         
-        const recommendationElement = document.createElement('div');
-        recommendationElement.className = 'recommendation';
-        
-        recommendationElement.innerHTML = `
+        const element = document.createElement('div');
+        element.className = 'recommendation';
+        element.innerHTML = `
             <img src="${posterPath}" alt="${movie.title}">
             <div class="recommendation-info">
                 <div class="recommendation-title">${movie.title} (${movie.release_date ? movie.release_date.substring(0, 4) : 'N/A'})</div>
@@ -229,6 +273,39 @@ function displayRecommendations(recommendations) {
             </div>
         `;
         
-        recommendationsList.appendChild(recommendationElement);
-    });
-}
+        return element;
+    }
+
+    function showRecommendationError() {
+        elements.recommendations.list.innerHTML = 
+            '<p class="error-message">Ocorreu um erro ao buscar recomendações. Por favor, tente novamente.</p>';
+    }
+
+    function checkRecommendButton() {
+        elements.recommendBtn.disabled = !(state.selectedMovie1 && state.selectedMovie2);
+    }
+
+    function triggerConfetti() {
+        if (typeof confetti === 'function') {
+            launchConfetti();
+        } else {
+            loadConfettiScript();
+        }
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#4361ee', '#3a0ca3', '#f72585', '#4cc9f0', '#7209b7']
+        });
+    }
+
+    function loadConfettiScript() {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js';
+        script.onload = launchConfetti;
+        document.head.appendChild(script);
+    }
+});
